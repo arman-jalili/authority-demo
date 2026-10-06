@@ -1,0 +1,14 @@
+id = "payout-unknown"
+name = "payout-unknown"
+description = "Pay an unknown beneficiary — shows the gate failing closed even with a human approval"
+version = "1.0.0"
+tags = ["payout", "fail-closed"]
+
+[[nodes]]
+id = "payout_execute"
+name = "payout_execute"
+description = "Execute the payout to newvendor (not in the operator's authority)"
+requires_approval = true
+[nodes.action]
+type = "run_command"
+command = "bash .rigorix/scripts/execute_payout.sh newvendor 900"

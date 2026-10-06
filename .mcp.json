@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "rigorix-mcp": {
+      "command": "rigorix-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}

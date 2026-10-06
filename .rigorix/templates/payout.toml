@@ -1,0 +1,21 @@
+id = "payout"
+name = "payout"
+description = "Pay acme 250 EUR — a consequential action. Pauses for human sign-off, then the authority is re-checked at dispatch (ADR-017)."
+version = "1.0.0"
+tags = ["payout", "approval", "consequence-gating"]
+
+# One node, so the scene is about ONE thing: the gap between "a human said
+# yes" (the approval) and "the money moved" (the dispatch).
+#
+# requires_approval = true -> the run pauses here (the governance surface).
+# The step then pauses AGAIN at the dispatch-time precondition gate: the
+# operator's authority check runs immediately before the command. Approval
+# releases the pause; it does not pre-approve the world.
+[[nodes]]
+id = "payout_execute"
+name = "payout_execute"
+description = "Execute the payout to acme"
+requires_approval = true
+[nodes.action]
+type = "run_command"
+command = "bash .rigorix/scripts/execute_payout.sh acme 250"

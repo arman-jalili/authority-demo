@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/deny-ledger-tamper.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx jest:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Bash(bash .rigorix/scripts/list_ledger.sh:*)",
+      "Bash(bash .rigorix/scripts/show_authority.sh:*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(bash .rigorix/scripts/execute_payout.sh:*)",
+      "Bash(bash .rigorix/scripts/setup-authority.sh:*)",
+      "Bash(bash .rigorix/scripts/freeze_beneficiary.sh:*)",
+      "Bash(bash .rigorix/scripts/thaw_beneficiary.sh:*)",
+      "Bash(bash .rigorix/scripts/reset.sh:*)",
+      "Bash(rm -rf .rigorix*)",
+      "Bash(rm ledger/payouts.json*)"
+    ]
+  }
+}

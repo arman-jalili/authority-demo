@@ -1,0 +1,35 @@
+# authority-demo — Codex configuration (project-scoped).
+#
+# Counterpart of the Claude Code setup:
+#   - .mcp.json                     -> [mcp_servers.rigorix-mcp]
+#   - .claude/settings.json hook    -> [[hooks.PreToolUse]]
+#   - .claude/settings.json         -> approval_policy (allowlist behavior)
+#
+# Project-scoped config only loads when the project is trusted. The
+# enforcement boundary is the PreToolUse hook below, not approval prompts.
+
+approval_policy = "never"
+
+[mcp_servers.rigorix-mcp]
+command = "rigorix-mcp"
+args = []
+# Resolved from PATH (or RIGORIX_MCP_BIN for the unreleased local build), like
+# .mcp.json does for Claude Code. The stdio server inherits the session working
+# directory, so runbook commands (relative to rigorix.toml) resolve correctly
+# when Codex runs from the repo root.
+# Auto-approve Rigorix tool calls: rigorix-mcp's tools carry no read-only
+# annotations, so Codex's default `auto` mode treats them as needing approval
+# when the permission profile is managed, and `approval_policy = "never"`
+# auto-rejects that approval ("user cancelled MCP tool call"). `approve`
+# pre-approves the tool call so it always runs. The human approval surface is
+# the runbook's requires_approval step, not the MCP call.
+default_tools_approval_mode = "approve"
+
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "node .claude/hooks/deny-ledger-tamper.mjs"
+timeout = 5
+blocking = true

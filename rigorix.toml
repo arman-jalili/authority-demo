@@ -1,0 +1,16 @@
+# authority-demo — local-only Rigorix configuration.
+#
+# No Docker, no IdP, no LLM key: everything stays on this machine. The
+# "authority" is a small operator-owned file OUTSIDE this repo (installed by
+# .rigorix/scripts/setup-authority.sh), the ledger is a JSON file, and the
+# signed trail is .rigorix/audit.
+#
+# `permission_mode` gates every tool call to the workspace (the safe default).
+# `audit_hmac_key` signs each audit envelope locally (HMAC-SHA256) so the
+# signed-evidence contract works without a backend to post to.
+#
+# To also POST envelopes to the enterprise dashboard, set
+# audit_backend_url / audit_backend_key here (kept out of this public repo).
+
+permission_mode = "workspace_write"
+audit_hmac_key = "authority-demo-hmac-key"
