@@ -1,0 +1,124 @@
+# Consequence gating — the authorization that expired in the gap
+
+**The question.** An agent was authorized to pay a beneficiary. A human
+reviewed the action and said yes. Some time later — after the approval, before
+the money — the beneficiary is frozen. Does the authorization still stand?
+
+Most governance has no way to answer that, because it treats approval as the
+end of the story. A human said yes, so the action is authorized. The agent's
+log says "approved". Nothing in the system knows that the world moved.
+
+This repo is a runnable answer. It is small on purpose: a ledger, one runbook,
+one check, and a signed trail.
+
+## The shape of the gap
+
+Every consequential action has two moments:
+
+```
+  plan time ──────────────── approval ──────────────── dispatch time
+      │                          │                             │
+  "the agent asks"          "a human says yes"          "the money moves"
+```
+
+Classical authorization collapses them into one. Approve once, and the action
+is authorized from then on. But the two moments are separated in time, and the
+world moves in the gap:
+
+- a beneficiary is **frozen** by compliance;
+- an account is **closed**;
+- a limit is **lowered**;
+- a vendor is **sanctioned**.
+
+A standing "yes" is a statement about the world *at the time it was given*. By
+dispatch time it may be a statement about a world that no longer exists.
+
+## The move: check at the moment of consequence
+
+The answer is not "approve more often". It is to separate the two questions and
+ask the second one where it matters:
+
+1. **Did a human authorize this action?** — the approval. Unchanged.
+2. **Does the authority still hold, right now?** — the dispatch-time
+   precondition.
+
+Rigorix runs the second check immediately before the step would execute, *after*
+the approval, using the current world. The approval releases the pause. It does
+not pre-approve the world.
+
+## What that looks like, scene by scene
+
+**T₀ — the grant looks fine.** The agent runs the payout runbook. It declares
+`requires_approval`, so the run pauses. The operator approves, the authority
+check passes at dispatch, and the payout executes. One row in the ledger.
+
+**ΔN — the world changes.** A second run pauses for approval. Before the
+operator approves it, the beneficiary is frozen. Nothing about the approval
+changes; it is still a valid "yes".
+
+**Tₙ — the same approval, a different world.** The operator approves the paused
+run. The run resumes. At dispatch, the check reads the *frozen* authority and
+exits non-zero. The step is refused. **The ledger never changes.**
+
+**The evidence.** The refusal is not a log line. It is a signed finding in the
+execution envelope:
+
+```json
+{
+  "precondition_id": "beneficiary-authorized",
+  "outcome": "failed",
+  "exit_code": 3,
+  "inputs_hash": "sha256:0078c18a…",
+  "checked_at": "2026-10-06T18:52:03.754834Z"
+}
+```
+
+`inputs_hash` is a fingerprint of what the check saw, `checked_at` is when it
+saw it, and the envelope is HMAC-signed. The refusal is reproducible from the
+record: the check ran, at this time, against this input, and it failed.
+
+## Why the check is operator-owned and out-of-repo
+
+A dispatch-time check is only worth anything if the agent cannot rewrite it. So
+the check and the authority it reads live **outside** the agent's repository:
+
+```
+$HOME/.rigorix-authority-demo/
+    ├── check-beneficiary.mjs
+    └── authority.json
+```
+
+The gate config points at that absolute path. An agent with full write access to
+the repo cannot forge the authority it is judged by, because the live answer is
+read from outside the workspace. The check itself is deliberately tiny — read a
+status, exit 0 or 3 — so it can be audited in a sitting. It is not a policy
+engine; it is *the operator's rule*, expressed as an exit code.
+
+That is also why the gate lives in the engine rather than in the payout script.
+The check decides; the engine enforces and records. A refusal becomes a signed
+finding with a stable shape, not whatever a script happened to print.
+
+## Answering the question
+
+**Does the authority still stand?** No — and you do not have to take anyone's
+word for it. From the signed record you can see that:
+
+- the human approval was recorded, and it was not withdrawn;
+- the authority was re-checked **at dispatch** and failed (exit 3);
+- the payout step never ran — the ledger is unchanged;
+- the check, its outcome, its input fingerprint, and the time it ran are all in
+  the envelope.
+
+The approval is a fact about intent. The precondition is a fact about the world.
+Recording both is what makes the gap answerable.
+
+## Run it
+
+```bash
+./reset-demo.sh
+node .rigorix/run-authority-demo.mjs
+```
+
+No Docker, no IdP, no API key. The driver plays the operator (it freezes the
+beneficiary mid-scene) and the approver, and every assertion is checked against
+the ledger and the signed envelope.
