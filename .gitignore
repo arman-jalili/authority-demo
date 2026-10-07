@@ -4,4 +4,5 @@ ledger/payouts.json
 .rigorix/audit/
 .rigorix/state/
 .rigorix/preconditions.toml
+.rigorix/.authority-home
 *.log

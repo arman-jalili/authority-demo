@@ -98,7 +98,7 @@ differently-privileged subprocess, or a persisted script.
 | Mode | Enforced by | Guarantee | Does **not** cover |
 |---|---|---|---|
 | **default (this demo)** | path containment + hook | agent-mediated calls cannot touch them | an unmediated write path to `$HOME` |
-| **`--isolated`** (#985) | OS ownership/mode | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
+| **`--isolated`** (#985 — available) | OS ownership/mode | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
 | **`require_immutable_check`** (#986) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
 | **attribution** (#987) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
 
@@ -106,6 +106,15 @@ The demo runs the **default** row. `inputs_hash` fingerprints what the check
 *saw*; #987's `authority_digest` binds the authority *content*, so a changed
 `authority.json` becomes visible in the signed record. Source of truth: ADR-017
 §Honest boundary.
+
+If the default is not enough, the same demo can run with the OS boundary:
+`setup-authority.sh --isolated` installs the check and authority root-owned
+(`0555`/`0444`) outside the repo, so the agent's UID cannot write them at all.
+It refuses to arm when the agent user has passwordless `sudo` — otherwise the
+agent could simply `sudo` the write — and the operator's own freeze/thaw
+commands escalate through a documented `sudo node` call. `verify-isolation.sh`
+asserts the boundary as the agent user. The default stays the default; isolation
+is an upgrade you opt into.
 
 The check itself is deliberately tiny — read a status, exit 0 or 3 — so it can
 be audited in a sitting. It is not a policy engine; it is *the operator's rule*,
