@@ -88,11 +88,28 @@ $HOME/.rigorix-authority-demo/
     └── authority.json
 ```
 
-The gate config points at that absolute path. An agent with full write access to
-the repo cannot forge the authority it is judged by, because the live answer is
-read from outside the workspace. The check itself is deliberately tiny — read a
-status, exit 0 or 3 — so it can be audited in a sitting. It is not a policy
-engine; it is *the operator's rule*, expressed as an exit code.
+The gate config points at that absolute path, outside the workspace. An agent's
+*agent-mediated* tool calls cannot write the check or the authority, and a
+`PreToolUse` hook denies direct payout, ledger, and authority edits on top of
+that. But be precise: **this is a policy + path + hook boundary, not a sandbox.**
+It does not stop an unmediated write to `$HOME` by another tool, a
+differently-privileged subprocess, or a persisted script.
+
+| Mode | Enforced by | Guarantee | Does **not** cover |
+|---|---|---|---|
+| **default (this demo)** | path containment + hook | agent-mediated calls cannot touch them | an unmediated write path to `$HOME` |
+| **`--isolated`** (#985) | OS ownership/mode | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
+| **`require_immutable_check`** (#986) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
+| **attribution** (#987) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
+
+The demo runs the **default** row. `inputs_hash` fingerprints what the check
+*saw*; #987's `authority_digest` binds the authority *content*, so a changed
+`authority.json` becomes visible in the signed record. Source of truth: ADR-017
+§Honest boundary.
+
+The check itself is deliberately tiny — read a status, exit 0 or 3 — so it can
+be audited in a sitting. It is not a policy engine; it is *the operator's rule*,
+expressed as an exit code.
 
 That is also why the gate lives in the engine rather than in the payout script.
 The check decides; the engine enforces and records. A refusal becomes a signed
