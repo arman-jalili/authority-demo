@@ -73,13 +73,40 @@ touching the check or the authority; it does **not** stop an unmediated write to
 | Mode | Enforced by | Guarantee | Does **not** cover |
 |---|---|---|---|
 | **default (this demo)** | path containment + hook | agent-mediated calls cannot touch the check/authority | an **unmediated** write path to `$HOME` |
-| **`--isolated`** (issue #985) | OS ownership/mode (root-owned `0555`/`0444`) | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
+| **`--isolated`** (issue #985 — available) | OS ownership/mode (root-owned `0555`/`0444`) | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
 | **`require_immutable_check`** (issue #986) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
 | **attribution** (issue #987) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
 
 The demo runs the **default** row today; the other rows are opt-in upgrades.
 `inputs_hash` fingerprints what the check *saw*; #987's `authority_digest` binds
 the authority *content*. Source of truth: ADR-017 §Honest boundary.
+
+### Isolated mode — make the boundary an OS fact
+
+The default install relies on the agent *choosing* the sanctioned tool path. To
+make the stronger boundary real on this machine, install the authority
+root-owned and non-writable:
+
+```bash
+bash .rigorix/scripts/setup-authority.sh --isolated
+bash .rigorix/scripts/verify-isolation.sh   # must print "isolation verified"
+```
+
+This installs the check (`0555`) and the authority (`0444`) under
+`/usr/local/lib/rigorix-authority-demo` (override: `RIGORIX_ISOLATED_HOME`),
+owned by root, and writes the gate config pointing there. The agent's UID now
+cannot write either file (`EACCES`), and `freeze_beneficiary.sh` /
+`thaw_beneficiary.sh` escalate the operator's own writes through a documented
+`sudo node` invocation.
+
+**Precondition:** the agent user must **not** have passwordless `sudo`. Setup
+runs `sudo -n true` and refuses when it succeeds (set
+`RIGORIX_ALLOW_PASSWORDLESS_SUDO=1` to continue with a loud warning) — a
+no-password-sudo agent user would simply `sudo` the write and the boundary would
+be hollow.
+
+`./reset-demo.sh --isolated` resets to this mode; the default (no flag) is
+unchanged.
 
 The check is the entire policy. It answers one question and exits:
 
@@ -162,8 +189,9 @@ The check *could* live in `execute_payout.sh`. It does not, for three reasons:
 | `.rigorix/templates/payout-unknown.toml` | The fail-closed case (unknown beneficiary) |
 | `operator/check-beneficiary.mjs` | The operator-owned check (source; installed outside) |
 | `operator/authority.json` | The authority (source; installed outside) |
-| `.rigorix/scripts/setup-authority.sh` | Installs both outside the repo; writes the gate config |
-| `.rigorix/scripts/freeze_beneficiary.sh` | The ΔN: freeze a beneficiary |
+| `.rigorix/scripts/setup-authority.sh` | Installs both outside the repo (default) or root-owned (`--isolated`); writes the gate config |
+| `.rigorix/scripts/verify-isolation.sh` | Asserts the isolated boundary as the agent UID (EACCES) |
+| `.rigorix/scripts/freeze_beneficiary.sh` | The ΔN: freeze a beneficiary (escalates via `sudo` in isolated mode) |
 | `.rigorix/run-authority-demo.mjs` | The scene-by-scene driver |
 | `src/payouts.ts` | The ledger domain (the "consequence") |
 | `.claude/hooks/deny-ledger-tamper.mjs` | The "stick": no direct payout / ledger / authority writes |
