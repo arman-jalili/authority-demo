@@ -125,13 +125,14 @@ if (!existsSync(join(repoRoot, ".rigorix", "preconditions.toml"))) {
 }
 
 // ── 0 ───────────────────────────────────────────────────────────────────────
-section("0 · The setup — the authority lives where the agent cannot reach it");
+section("0 · The setup — the authority lives outside the agent's workspace");
 console.log("  The gate runs an operator-owned check at DISPATCH time. The check");
 console.log("  and the authority file live OUTSIDE this repository:");
 console.log("    $HOME/.rigorix-authority-demo/check-beneficiary.mjs");
 console.log("    $HOME/.rigorix-authority-demo/authority.json");
-console.log("  An agent with full write access to the repo cannot forge the");
-console.log("  authority it is judged by — the live answer is read from outside.\n");
+console.log("  The agent's tool calls cannot write them; a PreToolUse hook denies");
+console.log("  direct edits as well. This is a policy + path + hook boundary, not a");
+console.log("  sandbox: an unmediated write to $HOME is still possible by design.");
 console.log("  authority.json right now:");
 console.log("    " + JSON.stringify(authority()));
 ok("authority is active at the start", authority().acme === "active");
