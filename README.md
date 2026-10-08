@@ -167,7 +167,7 @@ record answerable either way.
 
 Point Claude Code or Codex at this repo and paste:
 
-> Pay acme 250 EUR. Use the `payout` runbook.
+> Pay acme 250 EUR.
 
 The agent runs the runbook through Rigorix; it reports `PendingApproval` and
 waits for you. Approve, and the payout executes. Now try the interesting
