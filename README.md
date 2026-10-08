@@ -74,8 +74,8 @@ touching the check or the authority; it does **not** stop an unmediated write to
 |---|---|---|---|
 | **default (this demo)** | path containment + hook | agent-mediated calls cannot touch the check/authority | an **unmediated** write path to `$HOME` |
 | **`--isolated`** (issue #985 — available) | OS ownership/mode (root-owned `0555`/`0444`) | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
-| **`require_immutable_check`** (issue #986) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
-| **attribution** (issue #987) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
+| **`require_immutable_check`** (issue #986 — available) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
+| **attribution** (issue #987 — available) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
 
 The demo runs the **default** row today; the other rows are opt-in upgrades.
 `inputs_hash` fingerprints what the check *saw*; #987's `authority_digest` binds
@@ -132,7 +132,10 @@ After the Tₙ refusal, `.rigorix/audit/<execution_id>.json` records the check:
     "exit_code": 3,
     "inputs_hash": "sha256:0078c18a3758bd74ac5426c8659…",
     "checked_at": "2026-10-06T18:52:03.754834Z",
-    "summary": "precondition 'beneficiary-authorized' failed step 'payout_execute' (exit 3)"
+    "summary": "precondition 'beneficiary-authorized' failed step 'payout_execute' (exit 3)",
+    "check_digest": "sha256:9a1c0f…",      // ADR-017 #987: the check program
+    "authority_digest": "sha256:4f2be7…",  // the authority artifact it read
+    "check_writable": true                 // the boundary was writable (#986)
   }]
 }
 ```
@@ -142,6 +145,23 @@ finding is served by `rigorix_read_audit`. That is how an outsider answers
 "does the authority still stand?" **from the record, not from trust**: the
 check ran at dispatch, it saw the current world, it failed, and the step never
 executed (the ledger is unchanged).
+
+Three of those fields repay a second look:
+
+- `inputs_hash` fingerprints the **step inputs the engine fed the check** —
+  *what was asked*, not the authority the check consulted.
+- `authority_digest` (#987) binds the **authority content** the check read. The
+  demo declares `authority_path`, so the engine records it; freeze, thaw, or
+  edit `authority.json` and the digest changes. A verifier compares it against
+  the operator's known-good value — a changed authority is **visible**.
+- `check_writable: true` (#986) is the honest boundary fact: the default
+  `$HOME` install **is** writable by your UID, so the record says so. That is
+  exactly the caveat in the matrix above — and after
+  `setup-authority.sh --isolated` the same run records `check_writable: false`.
+
+Attribution is detection, not prevention: the boundary itself is the default
+row (path + hook) or the `--isolated` row (OS ownership). The digests make the
+record answerable either way.
 
 ## Try it with your agent
 

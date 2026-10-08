@@ -99,13 +99,16 @@ differently-privileged subprocess, or a persisted script.
 |---|---|---|---|
 | **default (this demo)** | path containment + hook | agent-mediated calls cannot touch them | an unmediated write path to `$HOME` |
 | **`--isolated`** (#985 — available) | OS ownership/mode | the agent's **UID cannot write** them | needs no passwordless `sudo` for the agent user |
-| **`require_immutable_check`** (#986) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
-| **attribution** (#987) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
+| **`require_immutable_check`** (#986 — available) | engine, at dispatch | a writable check/authority is **refused** | a check writable by another privileged identity |
+| **attribution** (#987 — available) | signed envelope | a forged authority is **visible** (`authority_digest`) | detection, not prevention |
 
 The demo runs the **default** row. `inputs_hash` fingerprints what the check
 *saw*; #987's `authority_digest` binds the authority *content*, so a changed
-`authority.json` becomes visible in the signed record. Source of truth: ADR-017
-§Honest boundary.
+`authority.json` becomes visible in the signed record. And the record is candid
+about its own strength: the default `$HOME` install records
+`check_writable: true`, because it *is* writable by your UID — after
+`setup-authority.sh --isolated` the same run records `check_writable: false`.
+Source of truth: ADR-017 §Honest boundary.
 
 If the default is not enough, the same demo can run with the OS boundary:
 `setup-authority.sh --isolated` installs the check and authority root-owned

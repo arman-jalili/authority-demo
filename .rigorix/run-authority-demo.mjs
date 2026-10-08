@@ -20,7 +20,7 @@
  *   4 · the evidence   — what the signed trail proves
  *   5 · fail closed    — an unknown beneficiary is refused too
  *
- * Requires: rigorix-mcp >= 1.9.1 on PATH (or RIGORIX_MCP_BIN), Node >= 22.
+ * Requires: rigorix-mcp >= 1.9.2 on PATH (or RIGORIX_MCP_BIN), Node >= 22.
  * Run ./reset-demo.sh first so every run starts from the same place.
  */
 import { spawn, spawnSync } from "node:child_process";
@@ -113,6 +113,11 @@ function showFinding(f) {
   console.log(`    inputs_hash     : ${String(f.inputs_hash).slice(0, 34)}…`);
   console.log(`    checked_at      : ${f.checked_at}`);
   console.log(`    summary         : ${f.summary}`);
+  // ADR-017 attribution (#987) + boundary fact (#986) — present on rigorix-mcp >= 1.9.2.
+  // Digests only (SpanPrivacy): they bind *what* was checked, never its contents.
+  if (f.check_digest) console.log(`    check_digest    : ${f.check_digest}`);
+  if (f.authority_digest) console.log(`    authority_digest: ${f.authority_digest}`);
+  if (f.check_writable != null) console.log(`    check_writable  : ${f.check_writable}`);
 }
 
 // ── go ──────────────────────────────────────────────────────────────────────
@@ -192,6 +197,11 @@ if (!env) {
   ok("the run recorded a precondition check", eventTypes.includes("precondition_checked"));
   ok("the refusal is on the signed record", (env.precondition_findings ?? []).length > 0);
   ok("the finding says the check failed", (env.precondition_findings ?? [])[0]?.outcome === "failed");
+  // ADR-017 attribution (#987) + boundary fact (#986) — requires rigorix-mcp >= 1.9.2.
+  const f0 = (env.precondition_findings ?? [])[0];
+  ok("the record binds the check program (check_digest)", !!f0?.check_digest);
+  ok("the record binds the authority content (authority_digest)", !!f0?.authority_digest);
+  ok("the record states whether the boundary was writable (check_writable)", f0?.check_writable != null);
 }
 
 console.log("\n  The same finding through the MCP read surface (rigorix_read_audit):");
