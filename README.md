@@ -43,7 +43,7 @@ No Docker, no IdP, no API key. `reset-demo.sh` installs the operator's
 authority check *outside* the repository, thaws the beneficiary, and clears the
 ledger and the signed trail, so every run starts from the same place.
 
-Requirements: `rigorix-mcp >= 1.9.1` on `PATH` (or `RIGORIX_MCP_BIN`), Node
+Requirements: `rigorix-mcp >= 1.9.2` on `PATH` (or `RIGORIX_MCP_BIN`), Node
 >= 22. `npm install && npm test` runs the unit tests.
 
 ## The trust boundary — why the check lives outside the repo

@@ -55,7 +55,7 @@ const child = spawn(MCP_BIN, [], {
 });
 child.on("error", (err) => {
   console.error(`Failed to start ${MCP_BIN}: ${err.message}`);
-  console.error("Is rigorix-mcp >= 1.9.1 installed? Set RIGORIX_MCP_BIN if it lives elsewhere.");
+  console.error("Is rigorix-mcp >= 1.9.2 installed? Set RIGORIX_MCP_BIN if it lives elsewhere.");
   process.exit(1);
 });
 let buf = "";
