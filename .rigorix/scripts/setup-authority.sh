@@ -16,11 +16,16 @@
 # defeat the boundary); set RIGORIX_ALLOW_PASSWORDLESS_SUDO=1 to downgrade to a
 # loud warning.
 #
-# Both configs declare `authority_path` (ADR-017 #987): the engine hashes that
-# artifact at dispatch and records `authority_digest` in the signed finding, so
-# a changed authority is visible in the record. `require_immutable_check` is
-# left at its default (false), so the boundary assessment is recorded
-# (`check_writable`) but never refuses — the default flow is unchanged.
+# The gate invokes the check DIRECTLY (`command = ["<...>/check-beneficiary.mjs"]`,
+# run via its `#!/usr/bin/env node` shebang) rather than through an interpreter
+# (`["node", "<...>/check.mjs"]`). This matters: the engine's trust boundary,
+# `check_digest` and `check_writable` all describe `command[0]`. With an
+# interpreter, `command[0]` is `node` — the check script would be unvalidated and
+# the digest would bind the interpreter instead of the check.
+#
+# `authority_path` (ADR-017 #987) makes the engine record `authority_digest` for
+# the authority artifact. `require_immutable_check` stays at its default (false),
+# so the boundary assessment is recorded (`check_writable`) but never refuses.
 #
 # Run by reset-demo.sh (and safe to re-run). It never overwrites an existing
 # live authority.json, so a presenter's freeze/thaw state survives a re-run;
@@ -30,7 +35,7 @@ source "$(dirname "$0")/_env.sh"
 
 ISOLATED_HOME="${RIGORIX_ISOLATED_HOME:-/usr/local/lib/rigorix-authority-demo}"
 
-# Default-mode gate config — byte-for-byte the pre-isolation output, plus the
+# Default-mode gate config — the pre-isolation gate, invoked directly, plus the
 # `authority_path` attribution declaration.
 write_gate_config_default() {
   cat > "$REPO_ROOT/.rigorix/preconditions.toml" <<EOF
@@ -44,17 +49,20 @@ write_gate_config_default() {
 # ADR-017 dispatch-time precondition:
 #   match          = the payout step's command
 #   require_params = the gate fails closed if /command is missing
-#   command        = argv-only, resolved outside the workspace
+#   command        = argv-only, invoked DIRECTLY (shebang). argv[0] must resolve
+#                    outside the workspace; because argv[0] IS the check, the
+#                    trust boundary, check_digest and check_writable all cover
+#                    the check itself — not an interpreter.
 #   failure        = deny (a non-zero exit refuses the step)
 #   authority_path = the artifact the check consults; the engine records its
-#                    sha256 (`authority_digest`) in the signed finding (#987).
+#                    sha256 (authority_digest) in the signed finding (#987).
 #                    Attribution only — a changed authority becomes visible.
 
 [[preconditions]]
 id = "beneficiary-authorized"
 match = { tool = "run_command", params = [{ pointer = "/command", kind = "glob", value = "*execute_payout.sh*" }] }
 require_params = ["/command"]
-command = ["node", "$AUTHORITY_HOME/check-beneficiary.mjs"]
+command = ["$AUTHORITY_HOME/check-beneficiary.mjs"]
 timeout_ms = 5000
 failure = "deny"
 authority_path = "$AUTHORITY_HOME/authority.json"
@@ -75,16 +83,17 @@ write_gate_config_isolated() {
 # ADR-017 dispatch-time precondition:
 #   match          = the payout step's command
 #   require_params = the gate fails closed if /command is missing
-#   command        = argv-only, resolved outside the workspace
+#   command        = argv-only, invoked DIRECTLY (shebang) — argv[0] IS the
+#                    check, so the boundary and digests cover the check itself.
 #   failure        = deny (a non-zero exit refuses the step)
 #   authority_path = the artifact the check consults; the engine records its
-#                    sha256 (`authority_digest`) in the signed finding (#987).
+#                    sha256 (authority_digest) in the signed finding (#987).
 
 [[preconditions]]
 id = "beneficiary-authorized"
 match = { tool = "run_command", params = [{ pointer = "/command", kind = "glob", value = "*execute_payout.sh*" }] }
 require_params = ["/command"]
-command = ["node", "$AUTHORITY_HOME/check-beneficiary.mjs"]
+command = ["$AUTHORITY_HOME/check-beneficiary.mjs"]
 timeout_ms = 5000
 failure = "deny"
 authority_path = "$AUTHORITY_HOME/authority.json"
@@ -98,13 +107,14 @@ setup_default() {
 
   mkdir -p "$AUTHORITY_HOME"
   cp "$REPO_ROOT/operator/check-beneficiary.mjs" "$AUTHORITY_HOME/check-beneficiary.mjs"
+  chmod 0755 "$AUTHORITY_HOME/check-beneficiary.mjs"
   if [ ! -f "$AUTHORITY_HOME/authority.json" ]; then
     cp "$REPO_ROOT/operator/authority.json" "$AUTHORITY_HOME/authority.json"
   fi
 
   write_gate_config_default
   echo "installed authority check -> $AUTHORITY_HOME"
-  echo "wrote .rigorix/preconditions.toml (gate armed, check outside the repo)"
+  echo "wrote .rigorix/preconditions.toml (gate armed, check invoked directly)"
 }
 
 setup_isolated() {
