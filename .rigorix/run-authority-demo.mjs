@@ -243,7 +243,12 @@ console.log("  Authorization is not a standing grant. It is re-evaluated at the"
 console.log("  moment of consequence. That is what makes \"the world changed\"");
 console.log("  answerable from the record instead of from trust.");
 
+// Restore the authority so the driver can be re-run without a reset (the scene
+// leaves it frozen on purpose — that is the point of ΔN).
+sh("thaw_beneficiary.sh", "acme");
+
 console.log("\n" + (failures === 0
   ? "✅ all assertions passed"
   : `❌ ${failures} assertion(s) failed`));
+console.log("   (authority restored to active — ./reset-demo.sh clears ledger + trail)");
 process.exit(failures === 0 ? 0 : 1);
